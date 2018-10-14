@@ -18,7 +18,7 @@ bl_info = {
     "category": "Object",
     "description": "Sets camera to autofocus on narest surface.",
     "author": "Leigh Harborne",
-    "version": (0, 2),
+    "version": (0, 2, 1),
     "blender": (2, 7, 9),
     "location": "Properties > Data",
 }
@@ -27,18 +27,17 @@ import bpy
 from bpy.props import (
     FloatProperty,
     BoolProperty,
-    PointerProperty
+    PointerProperty,
+    CollectionProperty,
     )
 from bpy.types import (
-    Operator,
     Panel,
-    PropertyGroup
+    PropertyGroup,
     )
 from bpy.app.handlers import persistent
 from mathutils import Vector
 import time
 
-active_cameras = []
 last_time = time.clock()
 elapsed = 0.0
         
@@ -65,14 +64,17 @@ def remove_target(cam):
         
 def set_enabled(self, value):
     self["enabled"] = value
-    cam = bpy.context.scene.objects[self.id_data.name]
-    global active_cameras
+    scn = bpy.context.scene
+    cam = scn.objects[self.id_data.name]
     if value:
-        active_cameras.append(cam)
+        a_cam = scn.autofocus_properties.active_cameras.add()
+        a_cam.camera = cam
+        a_cam.name = cam.name
         create_target(cam)
         reset_clock()
     else:
-        active_cameras.remove(cam)
+        i = scn.autofocus_properties.active_cameras.find(cam.name)
+        scn.autofocus_properties.active_cameras.remove(i)
         remove_target(cam)
     
 def get_enabled(self):
@@ -117,7 +119,14 @@ class AutoFocus_Properties(PropertyGroup):
         description="The object which will be used for DoF focus."
         )
         
-class AutoFocus_Timer(PropertyGroup):
+class AutoFocus_Active_Camera(PropertyGroup):
+    name = ""
+    camera = bpy.props.PointerProperty(type=bpy.types.Object)
+        
+class AutoFocus_Scene_Properties(PropertyGroup):
+    active_cameras = CollectionProperty(
+        type=AutoFocus_Active_Camera
+    )
     rate_enabled = BoolProperty(
         name="Timer",
         default=True,
@@ -160,18 +169,17 @@ class AutoFocus_Panel(Panel):
         split.prop(af, "max", text="")
         
         split = layout.split(percentage=0.5)
-        split.prop(context.scene.autofocus_timer, "rate_enabled")
-        split.prop(context.scene.autofocus_timer, "rate_seconds")
+        split.prop(context.scene.autofocus_properties, "rate_enabled")
+        split.prop(context.scene.autofocus_properties, "rate_seconds")
     
 @persistent
 def scene_update(scn):
     
-    if scn.autofocus_timer.rate_enabled and not check_clock(scn):
+    if scn.autofocus_properties.rate_enabled and not check_clock(scn):
         return
-    
-    global active_cameras
 
-    for cam in active_cameras:
+    for c in scn.autofocus_properties.active_cameras:
+        cam = c.camera
         #Set the position of the target empties.
         af = cam.data.autofocus
         tgt_loc = af.target.location
@@ -206,7 +214,7 @@ def check_clock(scn):
     elapsed += cur_time - last_time
     last_time = cur_time
     
-    if elapsed >= scn.autofocus_timer.rate_seconds:
+    if elapsed >= scn.autofocus_properties.rate_seconds:
         elapsed = 0.0
         return True
     
@@ -221,23 +229,24 @@ def reset_clock():
 def register():
     bpy.utils.register_class(AutoFocus_Panel)
     bpy.utils.register_class(AutoFocus_Properties)
-    bpy.utils.register_class(AutoFocus_Timer)
+    bpy.utils.register_class(AutoFocus_Active_Camera)
+    bpy.utils.register_class(AutoFocus_Scene_Properties)
     bpy.types.Camera.autofocus = PointerProperty(
                                     type=AutoFocus_Properties
                                     )
-    bpy.types.Scene.autofocus_timer = PointerProperty(
-                                    type=AutoFocus_Timer
+    bpy.types.Scene.autofocus_properties = PointerProperty(
+                                    type=AutoFocus_Scene_Properties
                                     )
     bpy.app.handlers.scene_update_post.append(scene_update)
-
 
 def unregister():
     bpy.utils.unregister_class(AutoFocus_Panel)
     bpy.utils.unregister_class(AutoFocus_Properties)
-    bpy.utils.unregister_class(AutoFocus_Timer)
+    bpy.utils.unregister_class(AutoFocus_Active_Camera)
+    bpy.utils.unregister_class(AutoFocus_Scene_Properties)
     bpy.app.handlers.scene_update_post.remove(scene_update)
     del bpy.types.Camera.autofocus
-    del bpy.types.Scene.autofocus_timer
+    del bpy.types.Scene.autofocus_properties
     
 if __name__ == "__main__":
     register()
