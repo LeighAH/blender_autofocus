@@ -17,3 +17,6 @@ A new panel will be added to the bottom of the camera properties window:
 When AutoFocus is enabled, the selected camera will focus on the nearest surface directly in front of it. Only surfaces between Min and Max units from the camera will be considered.
 
 The timer can be used to choose a specific update rate for the AutoFocus feature. Leaving this enabled is recommended for performance purposes. When it is disabled AutoFocus will update as often as possible, which is usually unnecessary.
+
+Example of the AutoFocus target automatically following the surface of some Suzannes:
+![](AutoFocus00010099.gif)
