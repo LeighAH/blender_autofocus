@@ -18,6 +18,6 @@ When AutoFocus is enabled, the selected camera will focus on the nearest surface
 
 The timer can be used to choose a specific update rate for the AutoFocus feature. Leaving this enabled is recommended for performance purposes. When it is disabled AutoFocus will update as often as possible, which is usually unnecessary.
 
-Example of the AutoFocus target automatically following the surfaces of some Suzannes:
+Example of the AutoFocus target automatically following the surfaces of some Suzannes, with a delay of 100ms:
 
 ![](AutoFocus00010099.gif)
