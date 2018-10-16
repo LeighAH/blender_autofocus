@@ -18,7 +18,7 @@ bl_info = {
     "category": "Object",
     "description": "Sets camera to autofocus on narest surface.",
     "author": "Leigh Harborne",
-    "version": (0, 2, 1),
+    "version": (0, 2, 2),
     "blender": (2, 7, 9),
     "location": "Properties > Data",
 }
@@ -29,6 +29,7 @@ from bpy.props import (
     BoolProperty,
     PointerProperty,
     CollectionProperty,
+    StringProperty,
     )
 from bpy.types import (
     Panel,
@@ -61,19 +62,29 @@ def remove_target(cam):
     
     objs = bpy.data.objects
     objs.remove(objs[target.name])
+    
+def find_cam(scn, af):
+    for obj in scn.objects:
+        if(obj.type=='CAMERA' and obj.data.autofocus != None
+        and obj.data.autofocus == af):
+            return obj
+        
+    return None
         
 def set_enabled(self, value):
     self["enabled"] = value
     scn = bpy.context.scene
-    cam = scn.objects[self.id_data.name]
+    cam = find_cam(scn, self)
     if value:
+        uid = cam.name + str(time.time())
+        cam.data.autofocus.uid = uid
         a_cam = scn.autofocus_properties.active_cameras.add()
         a_cam.camera = cam
-        a_cam.name = cam.name
+        a_cam.name = uid
         create_target(cam)
         reset_clock()
     else:
-        i = scn.autofocus_properties.active_cameras.find(cam.name)
+        i = scn.autofocus_properties.active_cameras.find(cam.data.autofocus.uid)
         scn.autofocus_properties.active_cameras.remove(i)
         remove_target(cam)
     
@@ -100,6 +111,11 @@ class AutoFocus_Properties(PropertyGroup):
         description="Enable auto focus for this camera.",
         get=get_enabled,
         set=set_enabled
+        )
+    uid = StringProperty(
+        name="UID",
+        default="",
+        description="Unique Identifier"
         )
     min = FloatProperty(
         name="Min Distance",
