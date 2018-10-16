@@ -69,14 +69,14 @@ def set_enabled(self, value):
     cam = scn.objects[self.id_data.name]
     if value:
         uid = cam.name + str(time.time())
-        cam.uid = uid
+        cam.data.autofocus.uid = uid
         a_cam = scn.autofocus_properties.active_cameras.add()
         a_cam.camera = cam
         a_cam.name = uid
         create_target(cam)
         reset_clock()
     else:
-        i = scn.autofocus_properties.active_cameras.find(cam.uid)
+        i = scn.autofocus_properties.active_cameras.find(cam.data.autofocus.uid)
         scn.autofocus_properties.active_cameras.remove(i)
         remove_target(cam)
     
