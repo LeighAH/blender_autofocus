@@ -20,4 +20,4 @@ The timer can be used to choose a specific update rate for the AutoFocus feature
 
 Example of the AutoFocus target automatically following the surfaces of some Suzannes, with a delay of 100ms:
 
-![](AutoFocus00010099.gif)
+![](autofocus.gif)
