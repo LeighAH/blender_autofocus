@@ -68,7 +68,7 @@ def set_enabled(self, value):
     scn = bpy.context.scene
     cam = scn.objects[self.id_data.name]
     if value:
-        uid = cam.name + time.time()
+        uid = cam.name + str(time.time())
         cam.uid = uid
         a_cam = scn.autofocus_properties.active_cameras.add()
         a_cam.camera = cam
