@@ -62,11 +62,19 @@ def remove_target(cam):
     
     objs = bpy.data.objects
     objs.remove(objs[target.name])
+    
+def find_cam(scn, af):
+    for obj in scn.objects:
+        if(obj.type=='CAMERA' and obj.data.autofocus != None
+        and obj.data.autofocus == af):
+            return obj
+        
+    return None
         
 def set_enabled(self, value):
     self["enabled"] = value
     scn = bpy.context.scene
-    cam = scn.objects[self.id_data.name]
+    cam = find_cam(scn, self)
     if value:
         uid = cam.name + str(time.time())
         cam.data.autofocus.uid = uid
