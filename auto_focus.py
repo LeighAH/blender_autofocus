@@ -18,12 +18,13 @@ bl_info = {
     "category": "Object",
     "description": "Sets camera to autofocus on narest surface.",
     "author": "Leigh Harborne",
-    "version": (0, 2, 2),
+    "version": (0, 3, 0),
     "blender": (2, 7, 9),
     "location": "Properties > Data",
 }
 
 import bpy
+import math
 from bpy.props import (
     FloatProperty,
     BoolProperty,
@@ -54,6 +55,10 @@ def create_target(cam):
     
 def remove_target(cam):
     target = cam.data.autofocus.target
+    
+    if cam.data.autofocus.smooth:
+        remove_smooth_target(cam)
+    
     cam.data.autofocus.target = None
     cam.data.dof_object = None
     target.parent = None
@@ -62,6 +67,30 @@ def remove_target(cam):
     
     objs = bpy.data.objects
     objs.remove(objs[target.name])
+    
+def create_smooth_target(cam):
+    target = cam.data.autofocus.target
+    smooth = bpy.data.objects.new("AutoFocus_Smooth_Target", None)
+    smooth.empty_draw_size = 1
+    smooth.empty_draw_type = "CIRCLE"
+    smooth.rotation_euler.x = math.radians(90)
+    smooth.parent = target
+    smooth.use_slow_parent = True
+    smooth.slow_parent_offset = cam.data.autofocus.smooth_offset
+    
+    cam.data.dof_object = smooth
+    bpy.context.scene.objects.link(smooth)
+    
+def remove_smooth_target(cam):
+    target = cam.data.autofocus.target
+    smooth = target.children[0]
+    cam.data.dof_object = target
+    smooth.use_slow_parent = False
+    smooth.parent = None
+    
+    bpy.context.scene.objects.unlink(smooth)
+    objs = bpy.data.objects
+    objs.remove(objs[smooth.name])
     
 def find_cam(scn, af):
     for obj in scn.objects:
@@ -87,12 +116,40 @@ def set_enabled(self, value):
         i = scn.autofocus_properties.active_cameras.find(cam.data.autofocus.uid)
         scn.autofocus_properties.active_cameras.remove(i)
         remove_target(cam)
+        cam.data.autofocus.smooth = False
     
 def get_enabled(self):
     if self.get("enabled") == None:
         return False
     else:
         return self["enabled"]
+    
+def set_smooth_enabled(self, value):
+    self["smooth"] = value
+    scn = bpy.context.scene
+    cam = find_cam(scn, self)
+    if value:
+        create_smooth_target(cam)
+    else:
+        remove_smooth_target(cam)
+    
+def get_smooth_enabled(self):
+    if self.get("smooth") == None:
+        return False
+    else:
+        return self["smooth"]
+    
+def set_smooth_offset(self, value):
+    self["smooth_offset"] = value
+    scn = bpy.context.scene
+    cam = find_cam(scn, self)
+    cam.data.autofocus.target.children[0].slow_parent_offset = value
+    
+def get_smooth_offset(self):
+    if self.get("smooth_offset") == None:
+        return 0.0
+    else:
+        return self["smooth_offset"]
     
 def set_timer_enabled(self, value):
     self["enabled"] = value
@@ -112,11 +169,6 @@ class AutoFocus_Properties(PropertyGroup):
         get=get_enabled,
         set=set_enabled
         )
-    uid = StringProperty(
-        name="UID",
-        default="",
-        description="Unique Identifier"
-        )
     min = FloatProperty(
         name="Min Distance",
         min=0.0,
@@ -128,6 +180,25 @@ class AutoFocus_Properties(PropertyGroup):
         min=0.1,
         default=100.0,
         description="Maximum focus distance."
+        )
+    smooth = BoolProperty(
+        name="Smoothing",
+        default=False,
+        description="Enable smoothing for auto focus using slow parent.",
+        get=get_smooth_enabled,
+        set=set_smooth_enabled
+        )
+    smooth_offset = FloatProperty(
+        name="Offset",
+        default=1.0,
+        description="Offset for smoothing. Higher values mean slower focusing.",
+        get=get_smooth_offset,
+        set=set_smooth_offset
+        )
+    uid = StringProperty(
+        name="UID",
+        default="",
+        description="Unique Identifier"
         )
     target = PointerProperty(
         type=bpy.types.Object,
@@ -183,6 +254,13 @@ class AutoFocus_Panel(Panel):
         split.active = af.enabled
         split.prop(af, "min", text="")
         split.prop(af, "max", text="")
+        
+        row = layout.row()
+        row.active = af.enabled
+        row.prop(af, "smooth")
+        row = layout.row()
+        row.enabled = af.smooth
+        row.prop(af, "smooth_offset")
         
         split = layout.split(percentage=0.5)
         split.prop(context.scene.autofocus_properties, "rate_enabled")
